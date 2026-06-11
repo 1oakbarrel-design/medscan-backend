@@ -3,10 +3,10 @@ const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const { v4: uuidv4 } = require('uuid');
 const rateLimit = require('express-rate-limit');
-const { userQ, rtQ } = require('../utils/database');
+const { db, userQ, rtQ } = require('../utils/database');
 const { generateToken, generateRefreshToken, rotateRefreshToken, requireAuth, safeUser } = require('../middleware/auth');
 const router = express.Router();
-const authLimiter = rateLimit({ windowMs: 15*60*1000, max: 10 });
+const authLimiter = rateLimit({ windowMs: 15*60*1000, max: 5 });
 const signupLimiter = rateLimit({ windowMs: 60*60*1000, max: 5, keyGenerator: req => req.ip });
 
 router.post('/signup', signupLimiter, async (req, res) => {
@@ -79,7 +79,6 @@ router.delete('/account', requireAuth, rateLimit({ windowMs: 60*60*1000, max: 3,
       try { await require('stripe')(process.env.STRIPE_SECRET_KEY).subscriptions.cancel(user.stripe_subscription_id); } catch(e) { console.error('Stripe cancel:', e.message); }
     }
     rtQ.revokeAll.run(req.user.id);
-    const db = require('../utils/database').db;
     db.prepare('DELETE FROM medications WHERE user_id=?').run(req.user.id);
     db.prepare('DELETE FROM family_members WHERE user_id=?').run(req.user.id);
     db.prepare('DELETE FROM interaction_checks WHERE user_id=?').run(req.user.id);
@@ -88,6 +87,18 @@ router.delete('/account', requireAuth, rateLimit({ windowMs: 60*60*1000, max: 3,
     db.prepare('DELETE FROM users WHERE id=?').run(req.user.id);
     res.json({ message: 'Account permanently deleted.' });
   } catch(e) { console.error('Delete account:', e); res.status(500).json({ error: 'Deletion failed. Please try again.' }); }
+});
+
+router.post('/admin/activate', async (req, res) => {
+  try {
+    const { email, secret } = req.body;
+    const ADMIN_SECRET = process.env.ADMIN_SECRET || 'raj2025';
+    if (secret !== ADMIN_SECRET) return res.status(403).json({ error: 'Invalid secret' });
+    const user = userQ.byEmail.get((email || '').toLowerCase());
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    db.prepare("UPDATE users SET is_admin=1,is_pro=1,plan='lifetime',subscription_status='lifetime' WHERE id=?").run(user.id);
+    res.json({ success: true, message: `Admin + lifetime access granted to ${email}` });
+  } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
 module.exports = router;

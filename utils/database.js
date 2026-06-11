@@ -6,7 +6,7 @@ db.pragma('foreign_keys = ON');
 db.exec(`
   CREATE TABLE IF NOT EXISTS users (
     id TEXT PRIMARY KEY, email TEXT UNIQUE NOT NULL, password_hash TEXT NOT NULL,
-    name TEXT, is_pro INTEGER DEFAULT 0, plan TEXT DEFAULT 'free',
+    name TEXT, is_pro INTEGER DEFAULT 0, is_admin INTEGER DEFAULT 0, plan TEXT DEFAULT 'free',
     stripe_customer_id TEXT, stripe_subscription_id TEXT,
     subscription_status TEXT DEFAULT 'inactive', subscription_end_date TEXT,
     reset_token TEXT, reset_token_expires TEXT,
@@ -99,4 +99,7 @@ const rtQ = {
   use: db.prepare('UPDATE refresh_tokens SET used=1 WHERE id=?'),
   revokeAll: db.prepare('UPDATE refresh_tokens SET used=1 WHERE user_id=?'),
 };
+// Safe migrations for existing installs
+try { db.exec("ALTER TABLE users ADD COLUMN is_admin INTEGER DEFAULT 0"); } catch(e) {}
+
 module.exports = { db, userQ, memberQ, medQ, scanQ, checkQ, webhookQ, rtQ };

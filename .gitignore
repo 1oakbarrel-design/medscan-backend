@@ -1,7 +1,4 @@
 node_modules/
+data.db
 .env
-data/
-*.db
-*.sqlite
-*.sqlite3
-npm-debug.log*
+*.log
