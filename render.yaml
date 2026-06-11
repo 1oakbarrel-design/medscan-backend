@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: medscan-backend
+    runtime: node
+    buildCommand: npm install
+    startCommand: node server.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: ADMIN_SECRET
+        value: raj2025
+      - key: JWT_SECRET
+        value: medscan2025secure
+      - key: FRONTEND_URL
+        value: https://medscan.pages.dev
+      - key: STRIPE_SECRET_KEY
+        value: sk_test_placeholder
+      - key: STRIPE_WEBHOOK_SECRET
+        value: whsec_placeholder
+      - key: ANTHROPIC_API_KEY
+        sync: false
